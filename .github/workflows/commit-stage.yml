@@ -1,0 +1,94 @@
+name: Commit Stage
+
+
+on:
+  push:
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: aymanhamad2002/edge-service
+  VERSION: latest
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+
+    permissions:
+      contents: read
+      security-events: write
+
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: gradle
+
+      - name: Code Vulnerability Scan
+        uses: anchore/scan-action@v7
+        with:
+          path: "${{ github.workspace }}"
+          fail-build: false
+          severity-cutoff: high
+
+      - name: Build, Unit Tests and Integration Tests
+        run: |
+          chmod +x gradlew
+          ./gradlew clean build
+          
+      - name: Set up Kubeconform
+        uses: bmuschko/setup-kubeconform@v1
+        with:
+          kubeconform-version: '0.8.0'
+
+      - name: Validate Kubernetes Manifests
+        run: |
+          kubeconform \
+            -strict \
+            -summary \
+            -verbose \
+            k8s
+          
+        
+  
+  package:
+      name: Package and Publish Docker Image
+      if: ${{github.ref == 'refs/heads/main'}}
+      needs: build
+      runs-on: ubuntu-22.04
+      permissions:
+        contents: read
+        packages: write
+        security-events: write
+      steps:
+        - name: Checkout source code
+          uses: actions/checkout@v4
+        - name : Set up JDK 17
+          uses: actions/setup-java@v4
+          with:
+            distribution: temurin
+            java-version: '17'
+            cache: gradle
+        - name: Build container image
+          run: |
+            chmod +x gradlew
+            ./gradlew bootBuildImage --imageName=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.VERSION }}
+        
+        - name : OCI image vulnerability scan
+          uses: anchore/scan-action@v7
+          with:
+            image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.VERSION }}
+            fail-build: false
+            severity-cutoff: high
+        - name: login into github container registry
+          uses: docker/login-action@v2
+          with:
+            registry: ${{ env.REGISTRY }}
+            username: ${{ github.actor }}
+            password: ${{ secrets.GITHUB_TOKEN }}
+        - name: Publish container image
+          run: |
+            docker push ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.VERSION }}

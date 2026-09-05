@@ -1,0 +1,95 @@
+server:
+  port: 9000
+
+  netty:
+    connection-timeout: 5s
+    idle-timeout: 15s
+
+  shutdown: graceful
+
+
+spring:
+  application:
+    name: edge-service
+
+  lifecycle:
+    timeout-per-shutdown-phase: 15s
+
+  session:
+    timeout: 10m
+    data:
+      redis:
+        namespace: polar:edge
+  
+  data:
+    redis:
+        connect-timeout: 2s
+        host: localhost
+        port: 6379
+        timeout: 1s
+
+  cloud:
+    gateway:
+      server:
+        webflux:
+
+          routes:
+            - id: catalog-route
+              uri: ${CATALOG_SERVICE_URL:http://localhost:9001}
+              predicates:
+                - Path=/books/**
+              filters:
+              - name: CircuitBreaker
+                args:
+                  name: catalogCircuitBreaker
+                  fallbackUri: forward:/catalog-fallback
+
+            - id: order-route
+              uri: ${ORDER_SERVICE_URL:http://localhost:9002}
+              predicates:
+                - Path=/orders/**
+
+          httpclient:
+            connect-timeout: 10000
+            response-timeout: 10s
+            pool:
+              type: elastic
+              max-idle-time: 15s
+              max-life-time:  60s
+          default-filters:
+          - SaveSession
+
+          
+          - name: Retry
+            args:
+              retries: 3
+              method: GET
+              series: SERVER_ERROR
+              exceptions: java.io.IOException,java.util.concurrent.TimeoutException
+              backoff:
+                firstBackOff: 50ms
+                maxBackOff: 500ms
+                factor: 2
+                basedOnPreviousValue: false
+          - name: RequestRateLimiter
+            args:
+              redis-rate-limiter.replenishRate: 10
+              redis-rate-limiter.burstCapacity: 20
+              redis-rate-limiter.requestedTokens: 1
+
+resilience4j:
+  circuitbreaker:
+    configs:
+      default:
+        sliding-window-size: 20
+        permitted-number-of-calls-in-half-open-state: 5
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 15000
+  timelimiter:
+    configs:
+      default:
+        timeout-duration: 5s
+
+logging:
+  level:
+    io.github.resilience4j: DEBUG
