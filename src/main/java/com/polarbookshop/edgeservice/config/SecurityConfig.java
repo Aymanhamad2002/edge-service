@@ -29,7 +29,6 @@ public class SecurityConfig {
                 )
                 .build();
     }
-Tr
     private ServerLogoutSuccessHandler oidcLogoutSuccessHandler(
             ReactiveClientRegistrationRepository clientRegistrationRepository) {
 
