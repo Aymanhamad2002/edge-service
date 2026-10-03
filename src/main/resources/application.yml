@@ -22,7 +22,7 @@ spring:
           keycloak:
             client-id: edge-service
             client-secret: polar-keycloak-secret
-            scope: openid
+            scope: openid,roles
         provider: 
           keycloak:
             issuer-uri: http://localhost:8080/realms/PolarBookshop
@@ -44,7 +44,13 @@ spring:
       server:
         webflux:
 
+
           routes:
+            - id: spa-route
+              uri: ${SPA_URL:http://localhost:9004}
+              predicates:
+                - Path=/,/*.css,/*.js,/favicon.ico
+                
             - id: catalog-route
               uri: ${CATALOG_SERVICE_URL:http://localhost:9001}
               predicates:
@@ -69,6 +75,7 @@ spring:
               max-life-time:  60s
           default-filters:
           - SaveSession
+          - TokenRelay
 
           
           - name: Retry
