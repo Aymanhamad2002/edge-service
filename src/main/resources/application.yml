@@ -109,5 +109,28 @@ resilience4j:
         timeout-duration: 5s
 
 logging:
+  pattern:
+        level: "%5p [${spring.application.name:},%X{traceId},%X{spanId}]"
+  group:
+    circuitbreaker:
+      - io.github.resilience4j
+      - org.springframework.cloud.circuitbreaker
   level:
-    io.github.resilience4j: DEBUG
+    circuitbreaker: DEBUG
+
+management:
+    endpoints:
+        web:
+            exposure:
+                include: refresh,health,prometheus
+    endpoint:
+        health:
+            show-details: always
+            show-components: always
+            probes:
+                enabled: true
+    metrics:
+        tags:
+            application: ${spring.application.name}
+
+
