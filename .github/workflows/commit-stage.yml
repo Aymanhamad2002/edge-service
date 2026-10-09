@@ -107,7 +107,5 @@ jobs:
             docker push ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.VERSION }}
         - name: Tag container image as latest
           run: |
-            docker tag \
-            $ {{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.VERSION }} \
-            $ {{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
-            docker push ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+            docker tag "${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.VERSION }}" "${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest"
+            docker push "${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest"
